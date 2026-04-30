@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import axios from 'axios';
+import API from '../utils/axios';
 
 const UserContext = createContext();
 
@@ -27,17 +27,14 @@ const userReducer = (state, action) => {
 export const UserProvider = ({ children }) => {
   const [state, dispatch] = useReducer(userReducer, initialState);
 
-  // Check if user is logged in on app start
   useEffect(() => {
     checkAuth();
   }, []);
 
   const checkAuth = async () => {
     try {
-      const response = await axios.get('/api/auth/me', {
-        withCredentials: true
-      });
-      
+      const response = await API.get('/auth/me');
+
       if (response.data.success) {
         dispatch({ type: 'SET_USER', payload: response.data.user });
       } else {
@@ -51,11 +48,12 @@ export const UserProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      const response = await axios.post('/api/auth/login', 
-        { email, password },
-        { withCredentials: true }
-      );
-      
+
+      const response = await API.post('/auth/login', {
+        email,
+        password
+      });
+
       if (response.data.success) {
         dispatch({ type: 'SET_USER', payload: response.data.user });
         return { success: true };
@@ -73,10 +71,9 @@ export const UserProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      const response = await axios.post('/api/auth/register', userData, {
-        withCredentials: true
-      });
-      
+
+      const response = await API.post('/auth/register', userData);
+
       if (response.data.success) {
         dispatch({ type: 'SET_USER', payload: response.data.user });
         return { success: true };
@@ -93,7 +90,7 @@ export const UserProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await axios.get('/api/auth/logout', { withCredentials: true });
+      await API.get('/auth/logout');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {

@@ -1,8 +1,11 @@
+const mongoose = require('mongoose');
 const Task = require('../models/Task');
 const User = require('../models/User');
 const Client = require('../models/Client');
 
+// ===============================
 // Create a new task
+// ===============================
 const createTask = async (req, res) => {
   try {
     console.log('Create task request:', {
@@ -11,12 +14,17 @@ const createTask = async (req, res) => {
     });
 
     const userRole = req.session.user.role;
-    
+
     if (userRole !== 'manager') {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Manager role required.'
       });
+    }
+
+    // 🔥 FORCE REMOVE empty clientId
+    if (req.body.clientId === "") {
+      delete req.body.clientId;
     }
 
     const {
@@ -30,7 +38,6 @@ const createTask = async (req, res) => {
       tags = []
     } = req.body;
 
-    // Validate required fields
     if (!title || !assignedTo) {
       return res.status(400).json({
         success: false,
@@ -38,7 +45,6 @@ const createTask = async (req, res) => {
       });
     }
 
-    // Check if assigned user exists and is an employee
     const assignedUser = await User.findById(assignedTo);
     if (!assignedUser || assignedUser.role !== 'employee') {
       return res.status(400).json({
@@ -47,23 +53,12 @@ const createTask = async (req, res) => {
       });
     }
 
-    // Check if client exists (if provided)
-    if (clientId) {
-      const client = await Client.findById(clientId);
-      if (!client) {
-        return res.status(400).json({
-          success: false,
-          message: 'Client not found'
-        });
-      }
-    }
-
     const task = new Task({
       title,
       description,
       assignedTo,
       assignedBy: req.session.user._id,
-      clientId,
+      clientId, // now undefined if empty
       priority,
       dueDate: dueDate ? new Date(dueDate) : null,
       notes,
@@ -72,7 +67,6 @@ const createTask = async (req, res) => {
 
     await task.save();
 
-    // Populate the task with user details
     await task.populate([
       { path: 'assignedTo', select: 'name email' },
       { path: 'assignedBy', select: 'name email' },
@@ -84,17 +78,19 @@ const createTask = async (req, res) => {
       message: 'Task created successfully',
       data: task
     });
+
   } catch (error) {
     console.error('Error creating task:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: error.message
     });
   }
 };
 
+// ===============================
 // Get tasks for current user
+// ===============================
 const getMyTasks = async (req, res) => {
   try {
     const userId = req.session.user._id;
@@ -102,20 +98,10 @@ const getMyTasks = async (req, res) => {
     const { status, priority, page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
 
-    console.log('getMyTasks called:', {
-      userId,
-      userRole,
-      query: req.query,
-      session: req.session.user
-    });
-
     let query = {};
-    
+
     if (userRole === 'employee') {
       query.assignedTo = userId;
-    } else if (userRole === 'manager') {
-      // Managers can see all tasks
-      query = {};
     }
 
     if (status && status !== 'all') {
@@ -138,22 +124,16 @@ const getMyTasks = async (req, res) => {
 
     const total = await Task.countDocuments(query);
 
-    console.log('Tasks found:', {
-      count: tasks.length,
-      total,
-      query,
-      tasks: tasks.map(t => ({ id: t._id, title: t.title, status: t.status }))
-    });
-
     res.json({
       success: true,
-      tasks: tasks,
+      tasks,
       pagination: {
         current: parseInt(page),
         pages: Math.ceil(total / limit),
         total
       }
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -163,14 +143,14 @@ const getMyTasks = async (req, res) => {
   }
 };
 
+// ===============================
 // Update task status
+// ===============================
 const updateTaskStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, notes } = req.body;
     const userId = req.session.user._id;
-
-    console.log('Update task status request:', { id, status, notes, userId, userRole: req.session.user.role });
 
     if (!['pending', 'in_progress', 'completed', 'cancelled'].includes(status)) {
       return res.status(400).json({
@@ -187,8 +167,10 @@ const updateTaskStatus = async (req, res) => {
       });
     }
 
-    // Check if user can update this task
-    if (task.assignedTo.toString() !== userId.toString() && req.session.user.role !== 'manager') {
+    if (
+      task.assignedTo.toString() !== userId.toString() &&
+      req.session.user.role !== 'manager'
+    ) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'
@@ -196,14 +178,9 @@ const updateTaskStatus = async (req, res) => {
     }
 
     const updateData = { status };
-    
-    if (notes) {
-      updateData.notes = notes;
-    }
 
-    if (status === 'completed') {
-      updateData.completedAt = new Date();
-    }
+    if (notes) updateData.notes = notes;
+    if (status === 'completed') updateData.completedAt = new Date();
 
     const updatedTask = await Task.findByIdAndUpdate(
       id,
@@ -215,13 +192,12 @@ const updateTaskStatus = async (req, res) => {
       { path: 'clientId', select: 'name company' }
     ]);
 
-    console.log('Task updated successfully:', updatedTask);
-
     res.json({
       success: true,
       message: 'Task updated successfully',
       data: updatedTask
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -231,19 +207,20 @@ const updateTaskStatus = async (req, res) => {
   }
 };
 
+// ===============================
 // Get task statistics
+// ===============================
 const getTaskStats = async (req, res) => {
   try {
     const userId = req.session.user._id;
     const userRole = req.session.user.role;
 
     let matchQuery = {};
-    
     if (userRole === 'employee') {
       matchQuery.assignedTo = userId;
     }
 
-    const pipeline = [
+    const stats = await Task.aggregate([
       { $match: matchQuery },
       {
         $group: {
@@ -257,60 +234,28 @@ const getTaskStats = async (req, res) => {
           },
           inProgressTasks: {
             $sum: { $cond: [{ $eq: ['$status', 'in_progress'] }, 1, 0] }
-          },
-          overdueTasks: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $ne: ['$dueDate', null] },
-                    { $lt: ['$dueDate', new Date()] },
-                    { $ne: ['$status', 'completed'] }
-                  ]
-                },
-                1,
-                0
-              ]
-            }
-          }
-        }
-      },
-      {
-        $addFields: {
-          completionRate: {
-            $cond: [
-              { $gt: ['$totalTasks', 0] },
-              { $multiply: [{ $divide: ['$completedTasks', '$totalTasks'] }, 100] },
-              0
-            ]
           }
         }
       }
-    ];
+    ]);
 
-    const stats = await Task.aggregate(pipeline);
-    console.log('Stats aggregation result:', stats);
-    
-    if (stats.length === 0) {
-      console.log('No stats found, returning default');
+    if (!stats.length) {
       return res.json({
         success: true,
         data: {
           totalTasks: 0,
           completedTasks: 0,
           pendingTasks: 0,
-          inProgressTasks: 0,
-          overdueTasks: 0,
-          completionRate: 0
+          inProgressTasks: 0
         }
       });
     }
 
-    console.log('Stats calculated successfully:', stats[0]);
     res.json({
       success: true,
       data: stats[0]
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -320,12 +265,12 @@ const getTaskStats = async (req, res) => {
   }
 };
 
-// Delete task (manager only)
+// ===============================
+// Delete task
+// ===============================
 const deleteTask = async (req, res) => {
   try {
-    const userRole = req.session.user.role;
-    
-    if (userRole !== 'manager') {
+    if (req.session.user.role !== 'manager') {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Manager role required.'
@@ -346,6 +291,7 @@ const deleteTask = async (req, res) => {
       success: true,
       message: 'Task deleted successfully'
     });
+
   } catch (error) {
     res.status(500).json({
       success: false,

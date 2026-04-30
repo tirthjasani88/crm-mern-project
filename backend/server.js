@@ -1,6 +1,10 @@
+require('dotenv').config();
+const connectDB = require('./config/db');
 const app = require('./app');
 
-const PORT = process.env.PORT || 5000;
+connectDB(); // connect to MongoDB
+
+const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
   console.log(`🚀 CRM Server running on port ${PORT}`);

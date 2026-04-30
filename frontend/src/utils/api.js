@@ -1,15 +1,15 @@
 import axios from 'axios';
 
-// Create axios instance with default config
+// Create axios instance with correct backend URL
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://localhost:5001/api', // ✅ FIXED
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor to add auth headers if needed
+// Request interceptor
 api.interceptors.request.use(
   (config) => {
     return config;
@@ -19,19 +19,18 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle common errors
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized access
       window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
 
-// Auth API
+// ================= AUTH API =================
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
@@ -39,78 +38,110 @@ export const authAPI = {
   getCurrentUser: () => api.get('/auth/me'),
 };
 
-// Clients API
+// ================= CLIENTS API =================
 export const clientsAPI = {
   getClients: (params) => api.get('/clients', { params }),
   getClient: (id) => api.get(`/clients/${id}`),
   createClient: (data) => api.post('/clients', data),
   updateClient: (id, data) => api.patch(`/clients/${id}`, data),
   deleteClient: (id) => api.delete(`/clients/${id}`),
-  assignClient: (id, assignedTo) => api.patch(`/clients/${id}/assign`, { assignedTo }),
-  updateStatus: (id, status) => api.patch(`/clients/${id}/status`, { status }),
+  assignClient: (id, assignedTo) =>
+    api.patch(`/clients/${id}/assign`, { assignedTo }),
+  updateStatus: (id, status) =>
+    api.patch(`/clients/${id}/status`, { status }),
 };
 
-// Activities API
+// ================= ACTIVITIES API =================
 export const activitiesAPI = {
-  getClientActivities: (clientId, params) => api.get(`/activities/client/${clientId}`, { params }),
-  getAllActivities: (params) => api.get('/activities/all', { params }),
-  createActivity: (clientId, data) => api.post(`/activities/client/${clientId}`, data),
-  updateActivity: (id, data) => api.patch(`/activities/${id}`, data),
-  deleteActivity: (id) => api.delete(`/activities/${id}`),
+  getClientActivities: (clientId, params) =>
+    api.get(`/activities/client/${clientId}`, { params }),
+  getAllActivities: (params) =>
+    api.get('/activities/all', { params }),
+  createActivity: (clientId, data) =>
+    api.post(`/activities/client/${clientId}`, data),
+  updateActivity: (id, data) =>
+    api.patch(`/activities/${id}`, data),
+  deleteActivity: (id) =>
+    api.delete(`/activities/${id}`),
 };
 
-// Reports API
+// ================= REPORTS API =================
 export const reportsAPI = {
   getSummary: () => api.get('/reports/summary'),
   getEmployeePerformance: () => api.get('/reports/employees'),
-  getRevenueReport: (period) => api.get('/reports/revenue', { params: { period } }),
-  getActivityReport: (period) => api.get('/reports/activities', { params: { period } }),
-  getEmployeeQuickStats: () => api.get('/reports/employee-quick-stats'),
+  getRevenueReport: (period) =>
+    api.get('/reports/revenue', { params: { period } }),
+  getActivityReport: (period) =>
+    api.get('/reports/activities', { params: { period } }),
+  getEmployeeQuickStats: () =>
+    api.get('/reports/employee-quick-stats'),
 };
 
-// Feedback API
+// ================= FEEDBACK API =================
 export const feedbackAPI = {
-  submitFeedback: (data) => api.post('/feedback/submit', data),
-  getClientFeedback: (clientId) => api.get(`/feedback/client/${clientId}`),
-  getAllFeedback: (params) => api.get('/feedback', { params }),
-  getFeedbackStats: () => api.get('/feedback/stats'),
-  updateFeedbackStatus: (id, status) => api.patch(`/feedback/${id}/status`, { status }),
+  submitFeedback: (data) =>
+    api.post('/feedback/submit', data),
+  getClientFeedback: (clientId) =>
+    api.get(`/feedback/client/${clientId}`),
+  getAllFeedback: (params) =>
+    api.get('/feedback', { params }),
+  getFeedbackStats: () =>
+    api.get('/feedback/stats'),
+  updateFeedbackStatus: (id, status) =>
+    api.patch(`/feedback/${id}/status`, { status }),
 };
 
-// Tasks API
+// ================= TASKS API =================
 export const tasksAPI = {
   createTask: (data) => api.post('/tasks', data),
-  getMyTasks: (params) => api.get('/tasks/my-tasks', { params }),
-  updateTaskStatus: (id, data) => api.patch(`/tasks/${id}/status`, data),
+  getMyTasks: (params) =>
+    api.get('/tasks/my-tasks', { params }),
+  updateTaskStatus: (id, data) =>
+    api.patch(`/tasks/${id}/status`, data),
   getTaskStats: () => api.get('/tasks/stats'),
-  deleteTask: (id) => api.delete(`/tasks/${id}`),
+  deleteTask: (id) =>
+    api.delete(`/tasks/${id}`),
 };
 
-// Users API (for getting employees)
+// ================= USERS API =================
 export const usersAPI = {
   getEmployees: () => api.get('/auth/employees'),
 };
 
-// Expenses API
+// ================= EXPENSES API =================
 export const expensesAPI = {
-  addExpense: (clientId, data) => api.post(`/clients/${clientId}/expenses`, data),
-  getClientExpenses: (clientId, params) => api.get(`/clients/${clientId}/expenses`, { params }),
-  getAllExpenses: (params) => api.get('/expenses/all', { params }),
-  updateExpense: (id, data) => api.patch(`/expenses/${id}`, data),
-  deleteExpense: (id) => api.delete(`/expenses/${id}`),
-  getExpenseStats: () => api.get('/expenses/stats'),
+  addExpense: (clientId, data) =>
+    api.post(`/clients/${clientId}/expenses`, data),
+  getClientExpenses: (clientId, params) =>
+    api.get(`/clients/${clientId}/expenses`, { params }),
+  getAllExpenses: (params) =>
+    api.get('/expenses/all', { params }),
+  updateExpense: (id, data) =>
+    api.patch(`/expenses/${id}`, data),
+  deleteExpense: (id) =>
+    api.delete(`/expenses/${id}`),
+  getExpenseStats: () =>
+    api.get('/expenses/stats'),
 };
 
-// Invoices API
+// ================= INVOICES API =================
 export const invoicesAPI = {
-  generateInvoice: (clientId, data) => api.post(`/clients/${clientId}/invoices/generate`, data),
-  getClientInvoices: (clientId, params) => api.get(`/clients/${clientId}/invoices`, { params }),
-  getInvoice: (id) => api.get(`/invoices/${id}`),
-  updateInvoiceStatus: (id, status) => api.patch(`/invoices/${id}/status`, { status }),
-  deleteInvoice: (id) => api.delete(`/invoices/${id}`),
-  downloadInvoice: (id) => api.get(`/invoices/${id}/download`, { responseType: 'blob' }),
-  resetInvoicedExpenses: (clientId) => api.post(`/clients/${clientId}/expenses/reset`),
-  testExpenses: (clientId) => api.get(`/clients/${clientId}/expenses/test`),
+  generateInvoice: (clientId, data) =>
+    api.post(`/clients/${clientId}/invoices/generate`, data),
+  getClientInvoices: (clientId, params) =>
+    api.get(`/clients/${clientId}/invoices`, { params }),
+  getInvoice: (id) =>
+    api.get(`/invoices/${id}`),
+  updateInvoiceStatus: (id, status) =>
+    api.patch(`/invoices/${id}/status`, { status }),
+  deleteInvoice: (id) =>
+    api.delete(`/invoices/${id}`),
+  downloadInvoice: (id) =>
+    api.get(`/invoices/${id}/download`, { responseType: 'blob' }),
+  resetInvoicedExpenses: (clientId) =>
+    api.post(`/clients/${clientId}/expenses/reset`),
+  testExpenses: (clientId) =>
+    api.get(`/clients/${clientId}/expenses/test`),
 };
 
 export default api;
