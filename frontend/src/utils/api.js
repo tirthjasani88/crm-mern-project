@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with correct backend URL
 const api = axios.create({
-  baseURL: 'http://localhost:5001/api', // ✅ FIXED
+  baseURL: 'https://your-backend-url.vercel.app', // ✅ FIXED
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
